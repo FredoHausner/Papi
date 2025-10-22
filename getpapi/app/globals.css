@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --terminal-bg: #000000;
+  --terminal-text: #33ff66;
+  --terminal-scanline: rgba(0, 255, 0, 0.08);
+  --terminal-glow: #00ff66;
+}
+
+@theme inline {
+  --color-background: var(--terminal-bg);
+  --color-foreground: var(--terminal-text);
+  --font-sans: var(--font-terminal);
+  --font-mono: var(--font-terminal);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body {
+  background-color: var(--terminal-bg);
+  color: var(--terminal-text);
+  font-family: var(--font-terminal), monospace;
+  text-shadow: 0 0 5px var(--terminal-glow), 0 0 10px var(--terminal-glow);
+  animation: flicker 5s infinite;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* crt scan lines */
+body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--terminal-scanline) 0px,
+    var(--terminal-scanline) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.25;
+}
+
+/* darken edges */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.6)
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* cursor blink animation */
+.blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* flicker */
+@keyframes flicker {
+  0%,
+  19%,
+  21%,
+  23%,
+  25%,
+  54%,
+  56%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  24%,
+  55% {
+    opacity: 0.95;
+  }
+}
