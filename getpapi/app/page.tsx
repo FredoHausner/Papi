@@ -1,7 +1,7 @@
 "use client";
 
 import {useState, useCallback, useRef} from "react";
-import {signIn, useSession} from "next-auth/react";
+import {signIn, signOut, useSession} from "next-auth/react";
 import Terminal from "./components/Terminal";
 
 type GDoc = {id: string; name: string};
@@ -13,7 +13,7 @@ export default function Home() {
     "Welcome to PapiOS v1.0",
     "----------------------------------------",
     "System online. Type a prompt or use:",
-    "^G  Google (list docs)  ·  clear  ·  export",
+    "^G  Google (list docs)  ·  clear  ·  export  ·  help",
     "Examples: google login | google docs | export new <title> | export to <#>",
     "----------------------------------------",
   ]);
@@ -41,6 +41,7 @@ export default function Home() {
           "Available commands:",
           "  help                 - show this text",
           "  clear                - clear the screen",
+          "  sudo reboot          - clear storage and sign out",
           "  export               - export (guided)",
           "  export new <title>   - create a new Google Doc",
           "  export to <#>        - append to one of your listed docs",
@@ -53,6 +54,35 @@ export default function Home() {
 
       if (lower === "clear") {
         setLogs([]);
+        return;
+      }
+
+      if (lower === "sudo reboot") {
+        append("> Requesting elevated privileges…");
+        await new Promise((r) => setTimeout(r, 600));
+        append("> Access granted.");
+        await new Promise((r) => setTimeout(r, 400));
+        append("> Rebooting system…");
+
+        try {
+          await signOut({redirect: false});
+        } catch {}
+
+        // Clear client-side data
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, `=;expires=${new Date(0).toUTCString()};path=/`);
+        });
+
+        await new Promise((r) => setTimeout(r, 800));
+        append("> Shutting down sessions…");
+        await new Promise((r) => setTimeout(r, 600));
+        append("> Wiping caches…");
+        await new Promise((r) => setTimeout(r, 600));
+        append("> System reboot complete. Type `help` to begin anew.");
         return;
       }
 
