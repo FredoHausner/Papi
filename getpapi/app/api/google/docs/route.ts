@@ -1,37 +1,47 @@
 import {NextResponse} from "next/server";
 import {getServerSession} from "next-auth";
-import {authOptions} from "../../auth/[...nextauth]/route";
+import {authOptions} from "../../auth/[...nextauth]/authOptions";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const accessToken = session?.access_token;
-  if (!accessToken)
-    return NextResponse.json({error: "UNAUTHORIZED"}, {status: 401});
+  try {
+    const session = await getServerSession(authOptions);
+    const accessToken = (session as any)?.access_token;
 
-  const params = new URLSearchParams({
-    q: "mimeType='application/vnd.google-apps.document' and trashed=false",
-    fields: "files(id,name,modifiedTime)",
-    orderBy: "modifiedTime desc",
-    pageSize: "10",
-    spaces: "drive",
-  });
-
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?${params}`,
-    {
-      headers: {Authorization: `Bearer ${accessToken}`},
-      cache: "no-store",
+    if (!accessToken) {
+      return NextResponse.json({error: "UNAUTHORIZED"}, {status: 401});
     }
-  );
 
-  if (!res.ok) {
-    const text = await res.text();
+    const params = new URLSearchParams({
+      q: "mimeType='application/vnd.google-apps.document' and trashed=false",
+      fields: "files(id,name,modifiedTime)",
+      orderBy: "modifiedTime desc",
+      pageSize: "10",
+      spaces: "drive",
+    });
+
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${params}`,
+      {
+        headers: {Authorization: `Bearer ${accessToken}`},
+        cache: "no-store",
+      }
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      return NextResponse.json(
+        {error: text || "Drive API error"},
+        {status: res.status}
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json({files: data.files ?? []});
+  } catch (err: any) {
+    console.error("Drive fetch error:", err);
     return NextResponse.json(
-      {error: text || "Drive API error"},
-      {status: res.status}
+      {error: err.message || "Internal Server Error"},
+      {status: 500}
     );
   }
-
-  const data = await res.json();
-  return NextResponse.json({files: data.files ?? []});
 }

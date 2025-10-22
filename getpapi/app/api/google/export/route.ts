@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
 import {getServerSession} from "next-auth";
-import {authOptions} from "../../auth/[...nextauth]/route";
+import {authOptions} from "../../auth/[...nextauth]/authOptions";
 
 type Body = {
   mode: "create" | "append";
@@ -19,19 +19,26 @@ async function docsFetch(path: string, token: string, init: RequestInit) {
     },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(await res.text());
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Docs API request failed: ${res.status}`);
+  }
+
   return res.json();
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  const accessToken = session?.access_token;
-  if (!accessToken)
-    return NextResponse.json({error: "UNAUTHORIZED"}, {status: 401});
-
-  const body = (await req.json()) as Body;
-
   try {
+    const session = await getServerSession(authOptions);
+    const accessToken = (session as any)?.access_token;
+
+    if (!accessToken) {
+      return NextResponse.json({error: "UNAUTHORIZED"}, {status: 401});
+    }
+
+    const body = (await req.json()) as Body;
+
     if (body.mode === "create") {
       const created = await docsFetch("documents", accessToken, {
         method: "POST",
@@ -45,7 +52,12 @@ export async function POST(req: Request) {
           method: "POST",
           body: JSON.stringify({
             requests: [
-              {insertText: {text: body.content, location: {index: 1}}},
+              {
+                insertText: {
+                  text: body.content,
+                  location: {index: 1},
+                },
+              },
             ],
           }),
         }
@@ -58,13 +70,19 @@ export async function POST(req: Request) {
       const doc = await docsFetch(`documents/${body.documentId}`, accessToken, {
         method: "GET",
       });
+
       const endIndex: number = doc.body.content.at(-1)?.endIndex ?? 1;
 
       await docsFetch(`documents/${body.documentId}:batchUpdate`, accessToken, {
         method: "POST",
         body: JSON.stringify({
           requests: [
-            {insertText: {text: body.content, location: {index: endIndex - 1}}},
+            {
+              insertText: {
+                text: body.content,
+                location: {index: endIndex - 1},
+              },
+            },
           ],
         }),
       });
@@ -74,8 +92,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({error: "Bad request"}, {status: 400});
   } catch (err: any) {
+    console.error("Docs API error:", err);
     return NextResponse.json(
-      {error: err.message || "Docs API error"},
+      {error: err.message || "Internal Server Error"},
       {status: 500}
     );
   }
