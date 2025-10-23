@@ -196,14 +196,32 @@ export default function Home() {
       }
 
       setLogs((l) => [...l, `> ${raw}`, "> Thinking…"]);
+
       try {
         const res = await fetch("/api/claude", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({messages: [{role: "user", content: raw}]}),
         });
-        const data = await res.json();
-        replaceThinking(data.reply ?? "Error: no reply");
+
+        if (!res.ok || !res.body) {
+          replaceThinking(`Error: ${res.statusText}`);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, {stream: true});
+          accumulated += chunk;
+          replaceThinking("> " + accumulated.trim());
+        }
+
+        replaceThinking("> " + accumulated.trim());
       } catch (e: any) {
         replaceThinking(`Error: ${e.message}`);
       }
