@@ -9,9 +9,19 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           access_type: "offline",
-          prompt: "consent",
-          scope:
-            "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents",
+          prompt: "consent", // force new grant after scope change
+          include_granted_scopes: "false", // don't silently keep old scopes
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            // list ALL Drive files' metadata (needed to see all Docs in Drive)
+            "https://www.googleapis.com/auth/drive.metadata.readonly",
+            // read Google Docs content (safe read-only)
+            "https://www.googleapis.com/auth/documents.readonly",
+            // keep if you CREATE/APPEND to Docs via API
+            "https://www.googleapis.com/auth/documents",
+          ].join(" "),
         },
       },
     }),
